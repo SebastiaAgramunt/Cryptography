@@ -1,3 +1,5 @@
+from random import randrange
+
 
 def xgcd(a, b):
     """
@@ -123,5 +125,65 @@ def InverseFermat(a, p):
     print("Inverse modulo of {} with p={} is {}. a*a^-1={}".format(a, p, InverseFermat(a,p), a*InverseFermat(a,p)%p))
     """
     return fastPowering(a, p-2, p)
+
+def EulerTotient(m):
+    """
+    Given a number m, gives the number of generators of the group, i.e. 
+    the nubmer of elements that can generate all the group by powering
+    """
+    c = 0
+    for i in range(m):
+        g, _, _ = xgcd(i, m)
+        if g == 1:
+            c+=1
+    return c 
+
+def isPrime(n, m=5):
+    """
+    Check primality of a number n using Miller-Rabin algorithm:
+    n: The number we want to check primality
+    m: Number of checks to perform
+
+    Returns: False if the number is composite
+             True if the number is probable to be prime
+    """
+    
+    # Check if the number is in between the first 4 primes
+    if n in [2, 3, 5, 7]:
+        return True
+    
+    # Take out half of the options, divisible by two is composite
+    if n%2 == 0:
+        return False
+    
+    # Write "n-1 = 2^k * q"
+    q = n-1
+    k = 0
+    while q%2 == 0:
+        q = q//2
+        k += 1
+    
+    # Loop over number of trials (the more, the better for primality test)
+    for t in range(m):
+        
+        # a is the potential whithess
+        a = randrange(2, n-1)
+        gcd, _, _ = xgcd(a, n)
+        
+        # If gcd of a random number<n and n is not 1 then n is composite.
+        if gcd != 1:
+            return False
+        
+        a = fastPowering(a, q, n)
+        if a!=1:
+            i = 0
+            while a != (n-1):
+                if i == (k-1):
+                    return False
+                else:
+                    i += 1
+                    a = fastPowering(a, 2, n) 
+    return True
+
 
 

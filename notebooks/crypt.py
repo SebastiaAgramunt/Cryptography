@@ -141,6 +141,9 @@ def EulerTotient(m):
 def isPrime(n, m=5):
     """
     Check primality of a number n using Miller-Rabin algorithm:
+    Book An introduction to mathemahical cryptography (Hoffstein, Pipher and Silverman)
+    page 127
+
     n: The number we want to check primality
     m: Number of checks to perform
 
@@ -164,7 +167,7 @@ def isPrime(n, m=5):
         k += 1
     
     # Loop over number of trials (the more, the better for primality test)
-    for t in range(m):
+    for _ in range(m):
         
         # a is the potential whithess
         a = randrange(2, n-1)
@@ -185,5 +188,31 @@ def isPrime(n, m=5):
                     a = fastPowering(a, 2, n) 
     return True
 
+def generateLargePrime(size=256, m=40):
+    """
+    Return a random prime number of size bits
+    Use Miller-Rabin algorithm to check primality
+
+    m: Number of checks to perform in Miller-Rabin
+    Returns: A very probable prime number
+    """
+    while True:
+        n = randrange(2**(size-1), 2**(size))
+        if isPrime(n, m):
+            return n
+
+# TODO: this function works only when p is prime, gerenalise for n
+def findGeneratorPrime(p):
+    """
+    brute force to find a generator of a group integer modulo p
+    with multiplicative operation being p a prime number.
+    If p is not prime we would have to take out non invertible elements
+    """
+   
+    while True:
+        i = randrange(2, p-1)
+        l = len(set([pow(i, j, p) for j in range(p)]))
+        if l == p-1:
+            return i
 
 

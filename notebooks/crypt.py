@@ -115,7 +115,7 @@ def InverseFermat(a, p):
     Given natural number a prime number p returns a^{-1}(mod p). The inverse
     modulo p of a.
     This way of getting the inverse of a number modulo a prime number is found
-    using Fermat's little hteorem
+    using Fermat's little theorem
     
     Important! p must be a prime number.
 

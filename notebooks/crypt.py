@@ -215,4 +215,40 @@ def findGeneratorPrime(p):
         if l == p-1:
             return i
 
+def _g(x, c, n):
+    # Function x^2+c mod n
+    return (fastPowering(x, 2, n) + c)%n
+
+def PollardsRhoFactorisation(n):
+    """Finds a non trivial factor for number n
+    """
+
+    # If n is prime return 1, the only factor
+    if isPrime(n, m=40):
+        return 1
+
+    x, c = randrange(2, n), randrange(1, n)
+    y, d = x, 1
+
+    while d==1:
+        x = _g(x, c, n)
+        y = _g(_g(y, c, n), c, n)
+        d, _, _ = xgcd(abs(x-y), n)
+
+
+        if d==n:
+            return PollardsRhoFactorisation(n)
+
+    return d
+
+
+
+
+
+
+
+
+
+
+
 

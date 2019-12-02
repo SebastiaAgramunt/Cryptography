@@ -124,6 +124,10 @@ def InverseFermat(a, p):
     a = 10
     print("Inverse modulo of {} with p={} is {}. a*a^-1={}".format(a, p, InverseFermat(a,p), a*InverseFermat(a,p)%p))
     """
+    # p has to be a prime number
+    if not isPrime(p, 40):
+        return None
+    
     return fastPowering(a, p-2, p)
 
 def EulerTotient(m):

@@ -245,14 +245,3 @@ def PollardsRhoFactorisation(n):
 
     return d
 
-
-
-
-
-
-
-
-
-
-
-

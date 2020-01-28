@@ -1,7 +1,17 @@
 from random import randrange
 
 
-SMALL_PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499, 503, 509, 521, 523, 541, 547, 557, 563, 569, 571, 577, 587, 593, 599, 601, 607, 613, 617, 619, 631, 641, 643, 647, 653, 659, 661, 673, 677, 683, 691, 701, 709, 719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787, 797, 809, 811, 821, 823, 827, 829, 839, 853, 857, 859, 863, 877, 881, 883, 887, 907, 911, 919, 929, 937, 941, 947, 953, 967, 971, 977, 983, 991, 997]
+SMALL_PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59,\
+ 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139,\
+ 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227,\
+ 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311,\
+ 313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401,\
+ 409, 419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491,\
+ 499, 503, 509, 521, 523, 541, 547, 557, 563, 569, 571, 577, 587, 593, 599,\
+ 601, 607, 613, 617, 619, 631, 641, 643, 647, 653, 659, 661, 673, 677, 683,\
+ 691, 701, 709, 719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787, 797,\
+ 809, 811, 821, 823, 827, 829, 839, 853, 857, 859, 863, 877, 881, 883, 887,\
+ 907, 911, 919, 929, 937, 941, 947, 953, 967, 971, 977, 983, 991, 997]
 
 def xgcd(a, b):
     """
@@ -9,7 +19,8 @@ def xgcd(a, b):
     ttps://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
 
     Solving equation au+bv=gcd(a,b)
-    result is: (g,u,v) where g is greatest common divisor and u,v the solution of the eq above
+    result is: (g,u,v) where g is greatest common divisor and u,v the solution 
+    of the eq above
 
     e.g.
     a = 16261
@@ -34,6 +45,11 @@ def primes_sieve_eratosthenes(limit):
 
     e.g. Calculate primes up to 100
     n = 100
+    primes = list(primes_sieve_eratosthenes(n))
+    print("All prime numbers bellow {} are:\n{}".format(n,primes))
+
+    e.g.2 Calculate all prime numbers smaller than 2^16
+    n = 1 << 16
     primes = list(primes_sieve_eratosthenes(n))
     print("All prime numbers bellow {} are:\n{}".format(n,primes))
 
@@ -226,12 +242,16 @@ def _g(x, c, n):
     return (fastPowering(x, 2, n) + c)%n
 
 def PollardsRhoFactorisation(n):
-    """Finds a non trivial factor for number n
+    """Finds a non trivial factor for number n, 
+    found factor is not necessarily a prime number(check!)
     """
 
     # If n is prime return 1, the only factor
     if isPrime(n, m=40):
         return 1
+
+    if n%2==0:
+        return 2
 
     x, c = randrange(2, n), randrange(1, n)
     y, d = x, 1
@@ -241,9 +261,29 @@ def PollardsRhoFactorisation(n):
         y = _g(_g(y, c, n), c, n)
         d, _, _ = xgcd(abs(x-y), n)
 
-
         if d==n:
             return PollardsRhoFactorisation(n)
 
     return d
+
+def BruteForceFactor(n, primes=SMALL_PRIMES):
+    """
+    Finds the factorisation of n using a set of prime numbers.
+    If the number is too large we may need a larger list of primes.
+    you can create large primes (up to for instance 2^16) by imputing 
+    primes = list(primes_sieve_eratosthenes(1<<16))
+    """
+    if isPrime(n,40):
+        return [1]
+    factors = []
+    for prime in primes:
+        #cannot factor further
+        if prime>n: 
+            break
+        if n%prime == 0:
+            factors.append(prime)
+            while n%prime == 0:
+                n //= prime
+    assert n==1, "Cannot factor, primes list is too short"
+    return factors
 

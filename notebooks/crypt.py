@@ -1,4 +1,5 @@
 from random import randrange
+from functools import reduce 
 
 
 SMALL_PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59,\
@@ -163,23 +164,24 @@ def EulerTotient(m):
 def isPrime(n, m=5):
     """
     Check primality of a number n using Miller-Rabin algorithm:
-    Book An introduction to mathemahical cryptography (Hoffstein, Pipher and Silverman)
+    Book An introduction to mathemahical cryptography (Hoffstein, 
+    Pipher and Silverman)
     page 127
 
     n: The number we want to check primality
     m: Number of checks to perform
 
     Returns: False if the number is composite
-             True if the number is probable to be prime
+             True if the number is probable to be prime (the larger the m, 
+             the more sure we are)
     """
+    # Take out half of the options, divisible by two is composite
+    if n%2 == 0:
+        return False
     
     # Check if the number is in among the list of small primes
     if n in SMALL_PRIMES:
         return True
-    
-    # Take out half of the options, divisible by two is composite
-    if n%2 == 0:
-        return False
     
     # Write "n-1 = 2^k * q"
     q = n-1
@@ -223,20 +225,6 @@ def generateLargePrime(size=256, m=40):
         if isPrime(n, m):
             return n
 
-# TODO: this function works only when p is prime, gerenalise for n
-def findGeneratorPrime(p):
-    """
-    brute force to find a generator of a group integer modulo p
-    with multiplicative operation being p a prime number.
-    If p is not prime we would have to take out non invertible elements
-    """
-   
-    while True:
-        i = randrange(2, p-1)
-        l = len(set([pow(i, j, p) for j in range(p)]))
-        if l == p-1:
-            return i
-
 def _g(x, c, n):
     # Function x^2+c mod n
     return (fastPowering(x, 2, n) + c)%n
@@ -266,9 +254,10 @@ def PollardsRhoFactorisation(n):
 
     return d
 
-def BruteForceFactor(n, primes=SMALL_PRIMES):
+def BruteForceFactorisation(n, primes=SMALL_PRIMES):
     """
-    Finds the factorisation of n using a set of prime numbers.
+    Finds the list of factors of n using a set of prime numbers. And also
+    the number of times each number has to be multiplied.
     If the number is too large we may need a larger list of primes.
     you can create large primes (up to for instance 2^16) by imputing 
     primes = list(primes_sieve_eratosthenes(1<<16))
@@ -276,14 +265,54 @@ def BruteForceFactor(n, primes=SMALL_PRIMES):
     if isPrime(n,40):
         return [1]
     factors = []
+    reps = []
     for prime in primes:
         #cannot factor further
         if prime>n: 
             break
         if n%prime == 0:
             factors.append(prime)
+            reps.append(0)
             while n%prime == 0:
                 n //= prime
+                reps[-1]+=1
     assert n==1, "Cannot factor, primes list is too short"
-    return factors
+    return factors, reps
 
+def PrimeFieldGenerator(p, primes=SMALL_PRIMES):
+    # input p is a prime number
+    # a list of primes to do the factorisation of the order
+    # Finds a generator of the field Fp*, i.e. an element such that
+    # multiplied by itself (1..,k) times can generate all elements of the group
+    # ALGORITHM IN BOOK: A Computational Introduction to Number Theory
+    # and Algebra by Shoup. Page 269.
+    if not isPrime(p, 40):
+        return None
+
+    order = p-1
+    factors, reps = BruteForceFactorisation(order, primes)
+
+    g=1
+    for factor, rep in zip(factors, reps):
+        while True:
+            a = randrange(1, p) #generator candidate
+            b = fastPowering(a, order*InverseFermat(factor, p)%p, p)
+            if b!=1:
+                exp = InverseFermat(fastPowering(factor, rep, p), p)*order%p
+                gamma = fastPowering(a, exp, p)
+                g=g*gamma%p
+                break
+    return g
+
+
+def isGeneratorBruteForce(g, p):
+    l = len(set([pow(g, j, p) for j in range(p)]))
+    return True if l == p-1 else False
+
+bits = 16
+n = 1 << bits
+primes = list(primes_sieve_eratosthenes(n))
+for _ in range(100):
+    p = generateLargePrime(bits, 40)
+    g = PrimeFieldGenerator(p, primes)
+    print(f"Prime number {p}, generator {g}, {isGeneratorBruteForce(g, p)}")

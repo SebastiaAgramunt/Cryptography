@@ -212,7 +212,7 @@ def isPrime(n, m=5):
                     a = fastPowering(a, 2, n) 
     return True
 
-def generateLargePrime(size=256, m=40):
+def RandomPrime(size=256, m=40):
     """
     Return a random prime number of size bits
     Use Miller-Rabin algorithm to check primality
@@ -263,7 +263,7 @@ def BruteForceFactorisation(n, primes=SMALL_PRIMES):
     primes = list(primes_sieve_eratosthenes(1<<16))
     """
     if isPrime(n,40):
-        return [1]
+        return [1], [1]
     factors = []
     reps = []
     for prime in primes:
@@ -309,10 +309,3 @@ def isGeneratorBruteForce(g, p):
     l = len(set([pow(g, j, p) for j in range(p)]))
     return True if l == p-1 else False
 
-bits = 16
-n = 1 << bits
-primes = list(primes_sieve_eratosthenes(n))
-for _ in range(100):
-    p = generateLargePrime(bits, 40)
-    g = PrimeFieldGenerator(p, primes)
-    print(f"Prime number {p}, generator {g}, {isGeneratorBruteForce(g, p)}")

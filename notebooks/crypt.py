@@ -39,7 +39,7 @@ def xgcd(a, b):
         u0, u1 = u1, u0 - q * u1
     return b, u0, v0
 
-def primes_sieve_eratosthenes(limit):
+def PrimesSieveEratosthenes(limit):
     """
     Calculate list of primes until an integer "limit"
     https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes
@@ -98,7 +98,7 @@ def InverseMod(a, m):
     if g!=1:
         print("{} has no inverse on modulo {}".format(a,m))
         return None
-    return u
+    return u%m
 
 def fastPowering(a, k, m):
     """
@@ -280,15 +280,16 @@ def BruteForceFactorisation(n, primes=SMALL_PRIMES):
     return factors, reps
 
 def PrimeFieldGenerator(p, primes=SMALL_PRIMES):
-    # input p is a prime number
-    # a list of primes to do the factorisation of the order
-    # Finds a generator of the field Fp*, i.e. an element such that
-    # multiplied by itself (1..,k) times can generate all elements of the group
-    # ALGORITHM IN BOOK: A Computational Introduction to Number Theory
-    # and Algebra by Shoup. Page 269.
+    '''
+     input p is a prime number
+     a list of primes to do the factorisation of the order
+     Finds a generator of the field Fp*, i.e. an element such that
+     multiplied by itself (1..,k) times can generate all elements of the group
+     ALGORITHM IN BOOK: A Computational Introduction to Number Theory
+     and Algebra by Shoup. Page 269.
     if not isPrime(p, 40):
         return None
-
+    '''
     order = p-1
     factors, reps = BruteForceFactorisation(order, primes)
 
@@ -308,4 +309,65 @@ def PrimeFieldGenerator(p, primes=SMALL_PRIMES):
 def isGeneratorBruteForce(g, p):
     l = len(set([pow(g, j, p) for j in range(p)]))
     return True if l == p-1 else False
+
+def LCM(a, b):
+    '''
+    Computes the least common multiple of two numbers
+    '''
+    g, _, _ = xgcd(a, b)
+
+    return a*b//g
+
+
+def RSAKeyGenerator(n=16):
+    '''
+    RSA key generation
+    input bitsize of the key
+    output: n, pubK, privK
+    '''
+
+    # Generate two random primes of n bits
+    p = RandomPrime(n, m=40)
+    q = RandomPrime(n, m=40)
+
+    # p and q must be different primes
+    while p==q:
+      q = RandomPrime(n, m=40)  
+
+    N = p*q
+    lm = LCM(p-1, q-1)
+    
+    while True:
+        e = randrange(2, lm)
+        g, _, _ = xgcd(e, lm)
+        if g==1:
+            d = InverseMod(e, lm)
+            # return public and private keys
+            return (N, e), (N, d)
+
+def RSAEncrypt(m, PublicKey):
+    '''
+    Input:
+        m: message (An integer message)
+        PublicKey: A tuple (N, e)
+    Returns:
+        c: Encrypted message
+    '''
+    N = PublicKey[0]
+    e = PublicKey[1]
+
+    return fastPowering(m, e, N)
+
+def RSADecrypt(c, PrivateKey):
+    '''
+    Input:
+        c: Encrypted message
+        PrivateKey: A tuple (N, d)
+    Returns:
+        m: Decrypted message
+    '''
+    N = PrivateKey[0]
+    d = PrivateKey[1]
+    return fastPowering(c, d, N)
+
 

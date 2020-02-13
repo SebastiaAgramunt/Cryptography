@@ -57,8 +57,8 @@ def PolyEvaluateModulo(coef: List[int], x: int, p: int) -> int:
     Returns:
         f(x), the evaluation of the polynomial at x in modulo 
     """
-    if p!=0 and not isPrime(p, 40):
-        raise ValueError(f"{p} should be 1 or a prime number")
+    if not isPrime(p, 40):
+        raise ValueError(f"{p} should be a prime number")
     n = len(coef)
     #apply modulo just in case we lie out of the range of the field
     x = x%p 

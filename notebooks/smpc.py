@@ -1,4 +1,4 @@
-from crypt import isPrime, InverseFermat
+from crypt import isPrime, InverseFermat, RandomPrime
 from random import randrange
 from typing import List, Tuple
 import numpy as np
@@ -137,7 +137,7 @@ def LagrangeInterpolation(x: int, shares: Shares, p: int) -> int:
 def RevealSecret(shares: Shares, p: int) -> int:
     """
     Returns the coefficient a0 from the polynomial constructed
-    using the shares
+    using the shares 
     Input: 
         shares: a set of points (x, y) drawn from the polynomial
         p: prime number that generates the field
@@ -145,3 +145,88 @@ def RevealSecret(shares: Shares, p: int) -> int:
         The intercept of the polynomial a0 or equivalently, the secret
     """
     return LagrangeInterpolation(0, shares, p)
+
+import numpy as np
+
+class AdditiveLSSS():
+    """
+    Full Threshold linear secret sharing scheme a.k.a additive secret sharing
+
+    Variables:
+        self._size: The size in bits of the generated prime
+        self._p: randomly generated prime of size size in bits
+        self._n: number of parties to split the secert to
+        self._m: M matrix of LSSS
+        self._v: V vector of LSSS
+        self._k: n values randomly generated s.t their sum modulo p is the secret
+        self._secret: the secret to split, a number between 0 and p-1
+
+    Methods:
+        self.GenerateShares: Generate a random k vector s.t the sum modulo p
+                             of its components is equal to the secret
+
+        self.S: Returns the vector of shares, in this scheme is the same as
+                returning the vector K directly since S is the unit matrix M
+                multiplied by vector K.
+
+        self.RevealSecret: Reveals the secret. Calculated using the scalar
+                           multplication of v (which is ones) and k. This
+                           modulated by p is the secret.
+
+
+    WARNING: This class uses numpy to do matrix operations and maximum precision is
+             uint64, however it is not recommended to work with prime numbers of 64
+             bits as sometimes causes overflow. This is why by default we work on 
+             32 bits. In a better implementation we have to improve this.
+    """
+    def __init__(self, n, size=32):
+        self._size = size
+        self._p = RandomPrime(size, 100)
+        self._n = n
+        self._m = np.identity(n, dtype=np.uint64)
+        self._v = np.ones(n, dtype=np.uint64)
+
+        # to be initialized
+        self._k = None
+        self._secret = None
+
+    @property
+    def p(self):
+        return self._p
+
+    @property
+    def n(self):
+        return self._n
+
+    @property
+    def k(self):
+        return self._k
+    
+    @property
+    def secret(self):
+        return self._secret
+
+    # Setter for secret, atomatically generates 
+    # the random K to get the Shares S
+    @secret.setter
+    def secret(self, secret):
+        self._secret = secret
+        self.GenerateShares()
+
+    def GenerateShares(self):
+        if not self._secret:
+            raise ValueError("No secret on the scheme, please feed with secret")
+        # generate n random additive shares
+        shares = [randrange(self._p) for _ in range(self._n-1)]
+        shares.append((self._secret-sum(shares))%self._p)
+        self._k = np.array(shares, dtype=np.uint64)
+
+    def S(self):
+        return self._m.dot(self._k)
+
+    def RevealSecret(self):
+        return int(np.dot(self._v, self._k)%self._p)
+
+
+
+

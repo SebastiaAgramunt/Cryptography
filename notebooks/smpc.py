@@ -1,4 +1,4 @@
-from crypt import isPrime, InverseFermat, RandomPrime
+from crypt import isPrime, InverseFermat, RandomPrime, fastPowering
 from random import randrange
 from typing import List, Tuple
 import numpy as np
@@ -147,6 +147,8 @@ def RevealSecret(shares: Shares, p: int) -> int:
     return LagrangeInterpolation(0, shares, p)
 
 import numpy as np
+# TODO: Implement an interface for all LSSS
+# TODO: Implement printing the object __str__ method
 
 class AdditiveLSSS():
     """
@@ -183,8 +185,8 @@ class AdditiveLSSS():
         self._size = size
         self._p = RandomPrime(size, 100)
         self._n = n
-        self._m = np.identity(n, dtype=np.uint64)
-        self._v = np.ones(n, dtype=np.uint64)
+        self._m = self._init_m()
+        self._v = self._init_v()
 
         # to be initialized
         self._k = None
@@ -211,7 +213,13 @@ class AdditiveLSSS():
     @secret.setter
     def secret(self, secret):
         self._secret = secret
-        self.GenerateShares()
+        self.GenerateShares() 
+
+    def _init_m(self):
+        return np.identity(self.n, dtype=np.uint64)
+
+    def _init_v(self):
+        return np.ones(self.n, dtype=np.uint64)
 
     def GenerateShares(self):
         if not self._secret:
@@ -226,6 +234,90 @@ class AdditiveLSSS():
 
     def RevealSecret(self):
         return int(np.dot(self._v, self._k)%self._p)
+
+
+class ShamirLSSS():
+    def __init__(self, n, t, size=32):
+        self._size = size
+        self._p = RandomPrime(size, 100)
+        self._n = n
+        self._t = t
+
+        # Initialize in this class
+        self._m = self._init_m()
+        self._v = self._init_v()
+
+        # to be initialized
+        self._k = None
+        self._secret = None
+
+    @property
+    def p(self):
+        return self._p
+
+    @property
+    def n(self):
+        return self._n
+
+    @property
+    def k(self):
+        return self._k
+
+    @property
+    def t(self):
+        return self._t
+
+    @property
+    def m(self):
+        return self._m
+
+    @property
+    def v(self):
+        return self._v
+
+    @property
+    def secret(self):
+        return self._secret
+
+    @secret.setter
+    def secret(self, secret):
+        self._secret = secret
+        self.GenerateShares() 
+
+    def _init_m(self):
+        m = np.ones((self._n, self._t+1), dtype=np.uint64)
+        for row in range(self._n):
+            for col in range(self._t+1):
+                m[row][col] = fastPowering(row+1, col, self._p)
+        return m
+
+    def _init_v(self):
+        v = np.zeros(self._t+1, dtype=np.uint64)
+        v[0] = 1
+        return v
+
+    def GenerateShares(self):
+        if not self._secret:
+            raise ValueError("No secret on the scheme, please feed with secret")
+        # TODO: should modify function ShamnirRandomPolynomial to generate t+1
+        shares = ShamirRandomPolynomial(self._secret, self._t, self._p)
+        self._k = np.array(shares, dtype=np.uint64)
+
+    def S(self):
+        return self._m.dot(self._k)
+
+    def RevealSecret(self):
+        return int(np.dot(self._v, self._k)%self._p)
+
+
+
+
+
+
+
+
+
+
 
 
 

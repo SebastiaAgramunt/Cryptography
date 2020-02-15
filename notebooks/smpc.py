@@ -146,34 +146,46 @@ def RevealSecret(shares: Shares, p: int) -> int:
     """
     return LagrangeInterpolation(0, shares, p)
 
+
+from abc import ABC, abstractmethod
 import numpy as np
 # TODO: Implement an interface for all LSSS
 # TODO: Implement printing the object __str__ method
 
-class AdditiveLSSS():
+class LSSS(ABC):
     """
-    Full Threshold linear secret sharing scheme a.k.a additive secret sharing
+    Base class for Linear Secret Sharing Schemes (LSSS)
 
     Variables:
+        self._n: number of parties to split the secert to
+        self._t: threshold, needed t+1 parties to reconstruct
         self._size: The size in bits of the generated prime
         self._p: randomly generated prime of size size in bits
-        self._n: number of parties to split the secert to
         self._m: M matrix of LSSS
         self._v: V vector of LSSS
+
         self._k: n values randomly generated s.t their sum modulo p is the secret
         self._secret: the secret to split, a number between 0 and p-1
 
     Methods:
+        @abstractmethod
         self.GenerateShares: Generate a random k vector s.t the sum modulo p
                              of its components is equal to the secret
 
+        @abstractmethod
         self.S: Returns the vector of shares, in this scheme is the same as
                 returning the vector K directly since S is the unit matrix M
                 multiplied by vector K.
 
+        @abstractmethod
         self.RevealSecret: Reveals the secret. Calculated using the scalar
                            multplication of v (which is ones) and k. This
                            modulated by p is the secret.
+        @abstractmethod
+        self._init_m(): Initialize matrix m
+
+        @abstractmethod
+        self._init_v(): Initialize vector v
 
 
     WARNING: This class uses numpy to do matrix operations and maximum precision is
@@ -181,69 +193,13 @@ class AdditiveLSSS():
              bits as sometimes causes overflow. This is why by default we work on 
              32 bits. In a better implementation we have to improve this.
     """
-    def __init__(self, n, size=32):
-        self._size = size
-        self._p = RandomPrime(size, 100)
-        self._n = n
-        self._m = self._init_m()
-        self._v = self._init_v()
-
-        # to be initialized
-        self._k = None
-        self._secret = None
-
-    @property
-    def p(self):
-        return self._p
-
-    @property
-    def n(self):
-        return self._n
-
-    @property
-    def k(self):
-        return self._k
-    
-    @property
-    def secret(self):
-        return self._secret
-
-    # Setter for secret, atomatically generates 
-    # the random K to get the Shares S
-    @secret.setter
-    def secret(self, secret):
-        self._secret = secret
-        self.GenerateShares() 
-
-    def _init_m(self):
-        return np.identity(self.n, dtype=np.uint64)
-
-    def _init_v(self):
-        return np.ones(self.n, dtype=np.uint64)
-
-    def GenerateShares(self):
-        if not self._secret:
-            raise ValueError("No secret on the scheme, please feed with secret")
-        # generate n random additive shares
-        shares = [randrange(self._p) for _ in range(self._n-1)]
-        shares.append((self._secret-sum(shares))%self._p)
-        self._k = np.array(shares, dtype=np.uint64)
-
-    def S(self):
-        return self._m.dot(self._k)
-
-    def RevealSecret(self):
-        return int(np.dot(self._v, self._k)%self._p)
-
-
-class ShamirLSSS():
     def __init__(self, n, t, size=32):
-        self._size = size
-        self._p = RandomPrime(size, 100)
+        
         self._n = n
         self._t = t
+        self._size = size
 
-        # Initialize in this class
+        self._p = RandomPrime(size, 100)
         self._m = self._init_m()
         self._v = self._init_v()
 
@@ -284,6 +240,55 @@ class ShamirLSSS():
         self._secret = secret
         self.GenerateShares() 
 
+    @abstractmethod
+    def _init_m(self):
+        pass
+
+    @abstractmethod
+    def _init_v(self):
+        pass
+
+    @abstractmethod
+    def GenerateShares(self):
+        pass
+
+    def S(self):
+        return self._m.dot(self._k)
+
+    def RevealSecret(self):
+        return int(np.dot(self._v, self._k)%self._p)
+
+
+class AdditiveLSSS(LSSS):
+    """
+    Full threshold linear secret sharing scheme a.k.a additive secret sharing.
+    Son class of LSSS. To see help on LSSS type help(LSSS) in Python
+    """
+    def __init__(self, n, size=32):
+        super().__init__(n=n, t=n, size=size)
+
+    def _init_m(self):
+        return np.identity(self.n, dtype=np.uint64)
+
+    def _init_v(self):
+        return np.ones(self.n, dtype=np.uint64)
+
+    def GenerateShares(self):
+        if not self._secret:
+            raise ValueError("No secret on the scheme, please feed with secret")
+        # generate n random additive shares
+        shares = [randrange(self._p) for _ in range(self._n-1)]
+        shares.append((self._secret-sum(shares))%self._p)
+        self._k = np.array(shares, dtype=np.uint64)
+
+class ShamirLSSS(LSSS):
+    """
+    Linear Secret Sharing Scheme for Shamir secret sharing.
+    Son class of LSSS. To see help on LSSS type help(LSSS) in Python
+    """
+    def __init__(self, n, t, size=32):
+        super().__init__(n=n, t=t, size=size)
+
     def _init_m(self):
         m = np.ones((self._n, self._t+1), dtype=np.uint64)
         for row in range(self._n):
@@ -303,22 +308,7 @@ class ShamirLSSS():
         shares = ShamirRandomPolynomial(self._secret, self._t, self._p)
         self._k = np.array(shares, dtype=np.uint64)
 
-    def S(self):
-        return self._m.dot(self._k)
 
-    def RevealSecret(self):
-        return int(np.dot(self._v, self._k)%self._p)
-
-
-
-
-
-
-
-
-
-
-
-
-
+class ReplicatedLSSS(LSSS):
+    pass
 

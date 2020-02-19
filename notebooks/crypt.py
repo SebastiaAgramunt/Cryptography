@@ -128,7 +128,7 @@ def InverseMod(a: int, m: int) -> int:
     """
     g, u, _ = xgcd(a,m)
     if g!=1:
-        print("{} has no inverse on modulo {}".format(a,m))
+        #print("{} has no inverse on modulo {}".format(a,m))
         return None
     return u%m
 
@@ -541,9 +541,7 @@ def RSAEncrypt(m: int, PublicKey: Tuple[int]):
     Returns:
         c: Encrypted message
     '''
-    N = PublicKey[0]
-    e = PublicKey[1]
-
+    N, e = PublicKey[0], PublicKey[1]
     return fastPowering(m, e, N)
 
 def RSADecrypt(c: int, PrivateKey: Tuple[int]):
@@ -555,8 +553,118 @@ def RSADecrypt(c: int, PrivateKey: Tuple[int]):
     Returns:
         m: Decrypted message
     '''
-    N = PrivateKey[0]
-    d = PrivateKey[1]
+    N, d = PrivateKey[0], PrivateKey[1]
     return fastPowering(c, d, N)
 
+# Auxiliar function for Paillier
+def _L(x, n):
+    return (x-1)//n
+
+def PaillierKeyGenerator(size: int = 64):
+    '''
+    Implementation of Paillier Cryptosystem
+    This function generates plublic and private keys
+    Input:
+        size: size in bits of the field
+    Output:
+        PublicKey: (n, g)
+        PrivateKey: (n, l, mu)
+    '''
+    
+    gcd = 2
+    while gcd!=1:
+        p = RandomPrime(size, 40)
+        q = RandomPrime(size, 40)
+        N = p*q
+
+        gcd, _, _ = xgcd(N, (p-1)*(q-1))
+
+        if gcd==1:
+            l = LCM(p-1, q-1)
+            nsq = N*N
+            g = randrange(1, nsq)
+            #def _L(x, N) = lambda x: (x-1)/ N
+            mu = InverseMod(_L(fastPowering(g, l, nsq), N), N)
+
+    return (N, g), (N, l, mu)
+
+def PaillierEncrypt(m: int, PublicKey: Tuple[int]):
+    '''
+    Encrypts a message m using the Paillier public key
+
+    Input:
+        m: message (An integer message) (mod n)
+        PublicKey: A tuple (N, g)
+    Output:
+        c: Encrypted message
+    '''
+    N, g = PublicKey[0], PublicKey[1]
+    gcd = 2
+    while gcd!=1:
+        r = randrange(1, N)
+        gcd, _, _ = xgcd(r, N)
+
+    return fastPowering(g, m, N*N)*fastPowering(r, N, N*N)%(N*N)
+
+
+def PaillierDecrypt(c: int, PrivateKey: Tuple[int]):
+    '''
+    Decrypts a ciphertext m using the Paillier private key
+
+    Input:
+        m: message (An integer message) (mod n)
+        PublicKey: A tuple (n, l, mu)
+    Output:
+        m: Decrypted message
+    '''
+    N, l, mu = PrivateKey[0], PrivateKey[1], PrivateKey[2]
+    return _L(fastPowering(c, l, N*N), N)*mu%N
+
+
+def ElGamalKeyGenerator(size: int = 64):
+    '''
+    Implementation of El Gamal Cryptosystem
+    This function generates plublic and private keys
+    Input:
+        size: size in bits of the field
+    Output:
+        PublicKey: (A, g, p)
+        PrivateKey: (sk, p)
+    '''
+    p, g = GeneratePrimeGeneratorPair(size)
+    sk = randrange(2, p-1)
+    A = fastPowering(g, sk, p)
+
+    # Return public key and private key
+    return (A, g, p), (sk, p)
+
+def ElGamalEncrypt(m: int, PublicKey: Tuple[int]):
+    '''
+    Encrypts a message m using the ElGamal public key
+
+    Input:
+        m: message (An integer message) (mod p)
+        PublicKey: A tuple (A, g, p)
+    Output:
+        c: tuple (c1, c2) encrypted message 
+    '''
+    A, g, p = PublicKey[0], PublicKey[1], PublicKey[2]
+    k = randrange(2, p-1)
+
+    return (fastPowering(g, k, p), fastPowering(A, k, p)*m%p)
+
+def ElGamalDecrypt(c: Tuple[int, int], PrivateKey: Tuple[int]):
+    '''
+    Decrypts a ciphertext m using the El Gamnal private key
+
+    Input:
+        c: tuple (c1, c2) the ciphertext of the message
+        PublicKey: A tuple (sk, p)
+    Output:
+        m: Decrypted message
+    '''
+    c1, c2 = c[0], c[1]
+    sk, p = PrivateKey[0], PrivateKey[1]
+    x = InverseFermat(fastPowering(c1, sk, p), p)
+    return (x * c2)%p
 

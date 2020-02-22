@@ -1,5 +1,4 @@
 FROM python:3.7.5
-#FROM python:3.7.2-stretch
 
 # Updating repository sources
 RUN apt-get update

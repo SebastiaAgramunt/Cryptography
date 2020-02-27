@@ -3,7 +3,7 @@ import os
 import string
 
 
-def create_dirs(*paths):
+def create_dirs(*paths)->None:
     """
     Creates a set of directories from a tuple of directories
     :param paths: List or tuple of strings for the paths to be created if they do not exist

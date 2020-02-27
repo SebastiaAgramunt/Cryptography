@@ -2,6 +2,7 @@ from crypt import isPrime, InverseFermat, RandomPrime, fastPowering
 from random import randrange
 from typing import List, Tuple
 import numpy as np
+from os import getcwd
 
 # A class of points defining a polynomial [(x0, y0), (x1, y1), ... (xn, yn)]
 Shares = List[Tuple[int, int]]
@@ -308,7 +309,125 @@ class ShamirLSSS(LSSS):
         shares = ShamirRandomPolynomial(self._secret, self._t, self._p)
         self._k = np.array(shares, dtype=np.uint64)
 
-
+# TODO: Implement replicated linear secret sharing scheme
 class ReplicatedLSSS(LSSS):
     pass
+
+
+class BeaverTriplesGenerator:
+    """
+    Class to handle the generator of Beaver triples
+    original paper: Efficient Multiparty Protocols using Circuit Randomization from Beaver
+                    https://doi.org/10.1007/3-540-46766-1_34
+
+    Input: 
+        - p: a large prime number
+        - n: number of parties that will perform the multiplication
+    """
+
+    def __init__(self, n: int, p: int):
+
+        self._p = p
+        self._n = n
+
+        if not isPrime(p, 100):
+            raise ValueError(f"{p} is not a prime, please enter the prime to define the field")
+
+    def _gen(self, check=False):
+        """
+        Generate a batch of of triples for self._n parties
+        Input: 
+            None
+        Output:
+            a triplet (a, b, c)
+                - a: Shares of variable a
+                - b: Shares of variable b
+                - c: Shares of variable c
+            s.t when reconstructed, a*b=c
+        """
+        a, b, c = [], [], []
+        cumsum = [0, 0, 0]
+        while len(a)<self._n:
+            a.append(randrange(self._p))
+            b.append(randrange(self._p))
+            c.append(randrange(self._p))
+
+            cumsum = [(cumsum[0]+a[-1])%self._p, (cumsum[1]+b[-1])%self._p, (cumsum[2]+c[-1])%self._p]
+
+        ab = cumsum[0]*cumsum[1]%self._p
+        d = (ab-cumsum[2])%self._p
+        c[0] = (c[0]+d)%self._p
+
+        if check:
+            assert self._checkTriple(a, b, c), "Triple generation was incorrect, a*b!=c"
+
+        return a, b, c
+
+    def _checkTriple(self, a: List[int], b: List[int], c: List[int]):
+        """
+        Check if a batch of shares of a, b and c accomplish that 
+        reconstructed(a)*reconstructed(b)=reconstructed(c)
+
+        Input:
+            a: the shares of a
+            b: the sares of b
+            c: the shares of c
+
+        Output:
+            True if reconstructed(a)*reconstructed(b)=reconstructed(c), else False
+        """
+        assert len(a)==self._n, f"Shares of a must be lenght n={self._n}, the number of parties"
+        assert len(b)==self._n, f"Shares of b must be lenght n={self._n}, the number of parties"
+        assert len(c)==self._n, f"Shares of c must be lenght n={self._n}, the number of parties"
+
+        cumsum = [0, 0, 0]
+        for i in range(self._n):
+            cumsum[0] = (cumsum[0]+a[i])%self._p
+            cumsum[1] = (cumsum[1]+b[i])%self._p
+            cumsum[2] = (cumsum[2]+c[i])%self._p
+
+        return cumsum[0]*cumsum[1]%self._p==cumsum[2]%self._p
+
+    def _Generatekbatches(self, k: int):
+        """
+        Generates triples for k operations and self._n parties.
+        """
+        assert k>0, "k must be larger than 0"
+        a, b, c = self._gen(check=False)
+
+        for _ in range(1, k):
+            new_gen = self._gen(check=False)
+            a += new_gen[0]
+            b += new_gen[1]
+            c += new_gen[2]
+
+        return a, b, c
+
+    def GenerateKBatches(self, k: int):
+        """
+        Generate triples for k operations and self._n parties wrapper
+        """
+        return self._Generatekbatches(k)
+
+    def GenerateToFile(self, k: int, filepath: str = f"{getcwd()}/beaver_triples.csv"):
+        """
+        Generates triples for k operations (batches) and self._n parties. Stores them into a filepath
+        Input:
+            k: number of multiplications (batches) we want to perform using the triples
+            filepath: The filepath and filename to store the beaver triples
+
+        Output:
+            a file stored in filepath with columns, shares of a, shares of b, shares of c.
+            each batch is separated by a space do distinguish.
+        """
+        a, b, c = self._Generatekbatches(k)
+
+        with open(filepath, "w+") as file:
+            for i, (x, y, z) in enumerate(zip(a, b, c)):
+                if i%self._n==0 and i!=0:
+                    file.write(f"\n")
+                file.write(f"{x},{y},{z}\n")
+
+
+
 

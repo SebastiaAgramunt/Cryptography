@@ -333,6 +333,16 @@ class BeaverTriplesGenerator:
         if not isPrime(p, 100):
             raise ValueError(f"{p} is not a prime, please enter the prime to define the field")
 
+    def _share(self, secret:int):
+        shares = []
+        for _ in range(self._n-1):
+            shares.append(randrange(self._p))
+        shares.append((secret-sum(shares))%self._p)
+        return shares
+
+    def _reconstruct(self, shares: List[int]):
+        return sum(shares)%self._p
+
     def _gen(self, check=False):
         """
         Generate a batch of of triples for self._n parties
@@ -345,25 +355,22 @@ class BeaverTriplesGenerator:
                 - c: Shares of variable c
             s.t when reconstructed, a*b=c
         """
-        a, b, c = [], [], []
-        cumsum = [0, 0, 0]
-        while len(a)<self._n:
-            a.append(randrange(self._p))
-            b.append(randrange(self._p))
-            c.append(randrange(self._p))
 
-            cumsum = [(cumsum[0]+a[-1])%self._p, (cumsum[1]+b[-1])%self._p, (cumsum[2]+c[-1])%self._p]
+        
+        a = randrange(self._p)
+        b = randrange(self._p)
+        c = (a * b) % self._p
 
-        ab = cumsum[0]*cumsum[1]%self._p
-        d = (ab-cumsum[2])%self._p
-        c[0] = (c[0]+d)%self._p
+        a_shares = self._share(a)
+        b_shares = self._share(b)
+        c_shares = self._share(c)
 
         if check:
-            assert self._checkTriple(a, b, c), "Triple generation was incorrect, a*b!=c"
+            assert self._checkTriple(a_shares, b_shares, c_shares), "Triple generation was incorrect, a*b!=c"
 
-        return a, b, c
+        return a_shares, b_shares, c_shares
 
-    def _checkTriple(self, a: List[int], b: List[int], c: List[int]):
+    def _checkTriple(self, a_shares: List[int], b_shares: List[int], c_shares: List[int]):
         """
         Check if a batch of shares of a, b and c accomplish that 
         reconstructed(a)*reconstructed(b)=reconstructed(c)
@@ -376,17 +383,15 @@ class BeaverTriplesGenerator:
         Output:
             True if reconstructed(a)*reconstructed(b)=reconstructed(c), else False
         """
-        assert len(a)==self._n, f"Shares of a must be lenght n={self._n}, the number of parties"
-        assert len(b)==self._n, f"Shares of b must be lenght n={self._n}, the number of parties"
-        assert len(c)==self._n, f"Shares of c must be lenght n={self._n}, the number of parties"
+        assert len(a_shares)==self._n, f"Shares of a must be lenght n={self._n}, the number of parties"
+        assert len(b_shares)==self._n, f"Shares of b must be lenght n={self._n}, the number of parties"
+        assert len(c_shares)==self._n, f"Shares of c must be lenght n={self._n}, the number of parties"
 
-        cumsum = [0, 0, 0]
-        for i in range(self._n):
-            cumsum[0] = (cumsum[0]+a[i])%self._p
-            cumsum[1] = (cumsum[1]+b[i])%self._p
-            cumsum[2] = (cumsum[2]+c[i])%self._p
+        a = self._reconstruct(a_shares)
+        b = self._reconstruct(b_shares)
+        c = self._reconstruct(c_shares)
 
-        return cumsum[0]*cumsum[1]%self._p==cumsum[2]%self._p
+        return a*b%self._p==c%self._p
 
     def _Generatekbatches(self, k: int):
         """

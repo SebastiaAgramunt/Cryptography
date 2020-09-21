@@ -1,6 +1,6 @@
 from crypt import isPrime, InverseFermat, RandomPrime, fastPowering
 from random import randrange
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import numpy as np
 from os import getcwd
 
@@ -160,6 +160,7 @@ class LSSS(ABC):
     Variables:
         self._n: number of parties to split the secert to
         self._t: threshold, needed t+1 parties to reconstruct
+        self._chi: the mapping from share number -> party
         self._size: The size in bits of the generated prime
         self._p: randomly generated prime of size size in bits
         self._m: M matrix of LSSS
@@ -194,10 +195,11 @@ class LSSS(ABC):
              bits as sometimes causes overflow. This is why by default we work on 
              32 bits. In a better implementation we have to improve this.
     """
-    def __init__(self, n, t, size=32):
+    def __init__(self, n: int, t: int, chi: Dict[int, int], size: int=32):
         
         self._n = n
         self._t = t
+        self._chi = chi
         self._size = size
 
         self._p = RandomPrime(size, 100)
@@ -239,7 +241,7 @@ class LSSS(ABC):
     @secret.setter
     def secret(self, secret):
         self._secret = secret
-        self.GenerateShares() 
+        self.GenerateK() 
 
     @abstractmethod
     def _init_m(self):
@@ -250,14 +252,22 @@ class LSSS(ABC):
         pass
 
     @abstractmethod
-    def GenerateShares(self):
+    def GenerateK(self):
         pass
-
-    def S(self):
-        return self._m.dot(self._k)
 
     def RevealSecret(self):
         return int(np.dot(self._v, self._k)%self._p)
+
+    def GetShares(self):
+        S = self._m.dot(self._k)
+
+        shares = {i:[] for i in range(self._n)}
+        for share_number, share in enumerate(S):
+            share_holder = self._chi[share_number]
+            shares[share_holder].append(share)
+        return shares
+
+         #return [share for data_holder, share in enumerate(S) if self._chi[data_holder]==i]
 
 
 class AdditiveLSSS(LSSS):
@@ -266,7 +276,8 @@ class AdditiveLSSS(LSSS):
     Son class of LSSS. To see help on LSSS type help(LSSS) in Python
     """
     def __init__(self, n, size=32):
-        super().__init__(n=n, t=n, size=size)
+        chi = {i:i for i in range(n)} # share:data_holder
+        super().__init__(n=n, t=n, chi=chi, size=size)
 
     def _init_m(self):
         return np.identity(self.n, dtype=np.uint64)
@@ -274,7 +285,7 @@ class AdditiveLSSS(LSSS):
     def _init_v(self):
         return np.ones(self.n, dtype=np.uint64)
 
-    def GenerateShares(self):
+    def GenerateK(self):
         if not self._secret:
             raise ValueError("No secret on the scheme, please feed with secret")
         # generate n random additive shares
@@ -288,7 +299,8 @@ class ShamirLSSS(LSSS):
     Son class of LSSS. To see help on LSSS type help(LSSS) in Python
     """
     def __init__(self, n, t, size=32):
-        super().__init__(n=n, t=t, size=size)
+        chi = {i:i for i in range(n)} # share:data_holder
+        super().__init__(n=n, t=t, chi=chi, size=size)
 
     def _init_m(self):
         m = np.ones((self._n, self._t+1), dtype=np.uint64)
@@ -302,16 +314,41 @@ class ShamirLSSS(LSSS):
         v[0] = 1
         return v
 
-    def GenerateShares(self):
+    def GenerateK(self):
         if not self._secret:
             raise ValueError("No secret on the scheme, please feed with secret")
         # TODO: should modify function ShamnirRandomPolynomial to generate t+1
         shares = ShamirRandomPolynomial(self._secret, self._t, self._p)
         self._k = np.array(shares, dtype=np.uint64)
 
-# TODO: Implement replicated linear secret sharing scheme
+
 class ReplicatedLSSS(LSSS):
-    pass
+    """
+    Linear Secret Sharing Scheme for Replicated secret sharing.
+    Son class of LSSS. To see help on LSSS type help(LSSS) in Python
+    """
+    def __init__(self, size=32):
+        chi = {i:i//2 for i in range(6)} # share:data_holder
+        super().__init__(n=3, t=1, chi=chi, size=size)
+
+    def _init_m(self):
+        m = np.zeros((6, 3), dtype=np.uint64)
+        m[2][0], m[4][0] = 1, 1
+        m[0][1], m[5][1] = 1, 1
+        m[1][2], m[3][2] = 1, 1
+        return m
+
+    def _init_v(self):
+        v = np.ones(self.n, dtype=np.uint64)
+        return v
+
+    def GenerateK(self):
+        if not self._secret:
+            raise ValueError("No secret on the scheme, please feed with secret")
+        # generate n random additive shares
+        shares = [randrange(self._p) for _ in range(self._n-1)]
+        shares.append((self._secret-sum(shares))%self._p)
+        self._k = np.array(shares, dtype=np.uint64)
 
 
 class BeaverTriplesGenerator:

@@ -430,18 +430,34 @@ class BeaverTriplesGenerator:
 
         return a*b%self._p==c%self._p
 
+#     def _Generatekbatches(self, k: int):
+#         """
+#         Generates triples for k operations and self._n parties.
+#         """
+#         assert k>0, "k must be larger than 0"
+#         a, b, c = self._gen(check=False)
+
+#         for _ in range(1, k):
+#             new_gen = self._gen(check=False)
+#             a += new_gen[0]
+#             b += new_gen[1]
+#             c += new_gen[2]
+
+#         return a, b, c
+
     def _Generatekbatches(self, k: int):
         """
         Generates triples for k operations and self._n parties.
         """
         assert k>0, "k must be larger than 0"
-        a, b, c = self._gen(check=False)
+        
+        a, b, c = [], [], []
 
-        for _ in range(1, k):
+        for _ in range(k):
             new_gen = self._gen(check=False)
-            a += new_gen[0]
-            b += new_gen[1]
-            c += new_gen[2]
+            a.append(new_gen[0])
+            b.append(new_gen[1])
+            c.append(new_gen[2])
 
         return a, b, c
 
